@@ -30,7 +30,7 @@ Rekaman disimpan di `~/Documents/Perekam Rapat/`, satu folder per rapat:
 ## Syarat
 
 - macOS 13 Ventura atau lebih baru
-- Xcode atau Command Line Tools (`xcode-select --install`) untuk build
+- Xcode 16 atau Command Line Tools terbaru (`xcode-select --install`) untuk build. Build dengan Xcode 15 gagal di CI; versi 16 berhasil.
 
 ## Build & instal
 
