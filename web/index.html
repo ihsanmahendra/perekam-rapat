@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perekam Rapat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: satu kolom konsol — panel rekam di atas, arsip rekaman di bawah */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #18212b;
+  --muted: #5b6876;
+  --line: #d5dbe2;
+  --accent: #1f6f78;      /* teal: mikrofon / eksternal */
+  --accent-2: #b5671b;    /* amber: audio sistem / internal */
+  --rec: #d23a3a;
+  --ok: #2c8a52;
+  --chip: #e3e9ee;
+  --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --surface: #1a2129; --ink: #e6ebf0; --muted: #94a1ae;
+    --line: #2c3540; --accent: #4fb3bd; --accent-2: #e09a52; --rec: #ff5c5c;
+    --ok: #4cc27f; --chip: #242d37; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #1a2129; --ink: #e6ebf0; --muted: #94a1ae;
+  --line: #2c3540; --accent: #4fb3bd; --accent-2: #e09a52; --rec: #ff5c5c;
+  --ok: #4cc27f; --chip: #242d37; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 8px; }
+h1 { font: 700 1.6rem/1.2 var(--font-display); margin: 0; letter-spacing: -0.01em; }
+h2 { font: 600 1.05rem/1.3 var(--font-display); margin: 0; }
+.sub { color: var(--muted); margin: 4px 0 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 18px; }
+label.lbl { display: block; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+input[type=text], select {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+.source { border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.source.mic { border-top: 3px solid var(--accent); }
+.source.sys { border-top: 3px solid var(--accent-2); }
+.src-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.src-title { font-weight: 600; }
+.src-title small { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; }
+.switch { position: relative; width: 44px; height: 24px; flex: none; }
+.switch input { opacity: 0; width: 100%; height: 100%; margin: 0; position: absolute; cursor: pointer; z-index: 1; }
+.switch span { position: absolute; inset: 0; background: var(--line); border-radius: 12px; transition: background .2s; }
+.switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); transition: transform .2s; }
+.switch input:checked + span { background: var(--ok); }
+.switch input:checked + span::after { transform: translateX(20px); }
+.switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meter { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; transition: width .06s linear; }
+.mic .meter i { background: var(--accent); }
+.sys .meter i { background: var(--accent-2); }
+.vol { display: flex; align-items: center; gap: 10px; font-size: .9rem; color: var(--muted); }
+.vol input { flex: 1; accent-color: var(--accent); }
+.sys .vol input { accent-color: var(--accent-2); }
+.status { font-size: .85rem; color: var(--muted); }
+.status.live { color: var(--ok); }
+.status.err { color: var(--rec); }
+
+.deck { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 18px; }
+.clock { font: 600 2.4rem/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: .02em; min-width: 7.5ch; }
+.state { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.state .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.state.on { color: var(--rec); }
+.state.on .dot { background: var(--rec); animation: blink 1.2s infinite; }
+.state.paused { color: var(--accent-2); }
+.state.paused .dot { background: var(--accent-2); }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .state.on .dot { animation: none; } }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+button {
+  font: 600 .95rem var(--font-body); border-radius: 6px; padding: 10px 16px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--rec); border-color: var(--rec); color: #fff; }
+button.small { padding: 6px 10px; font-size: .85rem; }
+button.danger { color: var(--rec); }
+
+.marks { display: flex; flex-wrap: wrap; gap: 6px; }
+.mark { background: var(--chip); border-radius: 4px; padding: 3px 8px; font-size: .85rem; }
+.mark b { font-family: var(--font-mono); font-weight: 600; margin-right: 6px; }
+
+.msg { padding: 10px 14px; border-radius: 6px; background: var(--chip); font-size: .92rem; }
+.msg.err { border-left: 3px solid var(--rec); }
+
+.list { display: grid; gap: 12px; }
+.item { border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.item-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.item-name { font-weight: 600; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.item audio { width: 100%; }
+.item .btns { margin-left: 0; }
+.empty { color: var(--muted); text-align: center; padding: 24px 0; }
+details { font-size: .92rem; color: var(--muted); }
+details summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+details ul { padding-left: 20px; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Perekam Rapat</h1>
+      <p class="sub">Rekam suara Anda (mikrofon) dan suara peserta online (audio sistem) dalam satu file.</p>
+    </div>
+  </header>
+
+  <section class="panel" aria-label="Perekam">
+    <div>
+      <label class="lbl" for="title">Judul rapat</label>
+      <input type="text" id="title" placeholder="mis. Rapat Mingguan Tim Produk">
+    </div>
+
+    <div class="grid2">
+      <div class="source mic">
+        <div class="src-head">
+          <div class="src-title">Audio eksternal<small>Mikrofon / suara di ruangan</small></div>
+          <label class="switch" title="Aktifkan mikrofon"><input type="checkbox" id="micOn" checked aria-label="Rekam mikrofon"><span></span></label>
+        </div>
+        <select id="micSel" aria-label="Pilih mikrofon"><option value="">Mikrofon default</option></select>
+        <div class="meter"><i id="micMeter"></i></div>
+        <div class="vol"><span>Volume</span><input type="range" id="micVol" min="0" max="200" value="100" aria-label="Volume mikrofon"><span id="micVolTxt">100%</span></div>
+        <div class="status" id="micStatus">Belum terhubung</div>
+      </div>
+
+      <div class="source sys">
+        <div class="src-head">
+          <div class="src-title">Audio internal<small>Suara sistem / Zoom / Meet / Teams</small></div>
+          <label class="switch" title="Aktifkan audio sistem"><input type="checkbox" id="sysOn" checked aria-label="Rekam audio sistem"><span></span></label>
+        </div>
+        <button id="sysPick" class="small" type="button">Pilih sumber audio sistem…</button>
+        <div class="meter"><i id="sysMeter"></i></div>
+        <div class="vol"><span>Volume</span><input type="range" id="sysVol" min="0" max="200" value="100" aria-label="Volume audio sistem"><span id="sysVolTxt">100%</span></div>
+        <div class="status" id="sysStatus">Belum terhubung</div>
+      </div>
+    </div>
+
+    <div id="msg" class="msg" hidden></div>
+
+    <div class="deck">
+      <div>
+        <div class="state" id="state"><span class="dot"></span><span id="stateTxt">Siap</span></div>
+        <div class="clock" id="clock">00:00:00</div>
+      </div>
+      <div class="btns">
+        <button id="btnRec" class="primary" type="button">● Mulai rekam</button>
+        <button id="btnPause" type="button" disabled>Jeda</button>
+        <button id="btnMark" type="button" disabled title="Tandai momen penting">Tandai</button>
+        <button id="btnStop" type="button" disabled>■ Selesai</button>
+      </div>
+    </div>
+    <div class="marks" id="marks"></div>
+
+    <details>
+      <summary>Cara merekam audio internal</summary>
+      <ul>
+        <li><b>Windows (Chrome/Edge):</b> klik "Pilih sumber audio sistem", pilih tab <i>Seluruh Layar</i>, lalu centang <i>Bagikan audio sistem</i>.</li>
+        <li><b>Meet/Zoom web di browser:</b> pilih tab rapat tersebut dan centang <i>Bagikan audio tab</i>.</li>
+        <li><b>macOS:</b> browser hanya bisa menangkap audio tab. Untuk aplikasi Zoom/Teams desktop, pasang BlackHole lalu pilih sebagai mikrofon kedua, atau buat Multi-Output Device.</li>
+        <li><b>Linux:</b> pilih tab, atau pilih perangkat "Monitor of …" di daftar mikrofon.</li>
+        <li>Gunakan headset agar suara peserta tidak terekam dua kali (gema).</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="panel" aria-label="Arsip rekaman">
+    <div class="item-head">
+      <h2>Rekaman tersimpan</h2>
+      <span class="meta" id="storeInfo"></span>
+    </div>
+    <div class="list" id="list"><div class="empty">Belum ada rekaman. Tekan "Mulai rekam" untuk membuat yang pertama.</div></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const el = {
+    title: $('title'), micOn: $('micOn'), micSel: $('micSel'), micMeter: $('micMeter'), micVol: $('micVol'),
+    micVolTxt: $('micVolTxt'), micStatus: $('micStatus'), sysOn: $('sysOn'), sysPick: $('sysPick'),
+    sysMeter: $('sysMeter'), sysVol: $('sysVol'), sysVolTxt: $('sysVolTxt'), sysStatus: $('sysStatus'),
+    msg: $('msg'), state: $('state'), stateTxt: $('stateTxt'), clock: $('clock'), btnRec: $('btnRec'),
+    btnPause: $('btnPause'), btnMark: $('btnMark'), btnStop: $('btnStop'), marks: $('marks'),
+    list: $('list'), storeInfo: $('storeInfo')
+  };
+
+  let ctx, dest, micStream, sysStream, micNode, sysNode, micGain, sysGain, micAn, sysAn;
+  let recorder, chunks = [], startedAt = 0, pausedTotal = 0, pausedAt = 0, tick, marks = [];
+
+  /* ---------- util ---------- */
+  const fmt = ms => {
+    const s = Math.floor(ms / 1000);
+    return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':');
+  };
+  const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.ceil(b / 1024) + ' KB';
+  const showMsg = (text, err) => { el.msg.textContent = text; el.msg.className = 'msg' + (err ? ' err' : ''); el.msg.hidden = !text; };
+  const setStatus = (node, text, cls) => { node.textContent = text; node.className = 'status' + (cls ? ' ' + cls : ''); };
+  const safeName = s => (s || 'rapat').replace(/[\\/:*?"<>|]+/g, '-').trim().slice(0, 80);
+  const elapsed = () => !startedAt ? 0 : (recorder?.state === 'paused' ? pausedAt : Date.now()) - startedAt - pausedTotal;
+
+  function ensureCtx() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      dest = ctx.createMediaStreamDestination();
+      micGain = ctx.createGain(); sysGain = ctx.createGain();
+      micAn = ctx.createAnalyser(); sysAn = ctx.createAnalyser();
+      micAn.fftSize = sysAn.fftSize = 512;
+      micGain.connect(micAn); micGain.connect(dest);
+      sysGain.connect(sysAn); sysGain.connect(dest);
+      applyVolumes();
+      requestAnimationFrame(drawMeters);
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  function applyVolumes() {
+    if (!ctx) return;
+    micGain.gain.value = el.micOn.checked ? el.micVol.value / 100 : 0;
+    sysGain.gain.value = el.sysOn.checked ? el.sysVol.value / 100 : 0;
+  }
+  const buf = new Uint8Array(512);
+  function level(an) {
+    an.getByteTimeDomainData(buf);
+    let peak = 0;
+    for (let i = 0; i < an.fftSize; i++) peak = Math.max(peak, Math.abs(buf[i] - 128));
+    return Math.min(100, (peak / 128) * 140);
+  }
+  function drawMeters() {
+    el.micMeter.style.width = (micNode ? level(micAn) : 0) + '%';
+    el.sysMeter.style.width = (sysNode ? level(sysAn) : 0) + '%';
+    requestAnimationFrame(drawMeters);
+  }
+
+  /* ---------- sumber audio ---------- */
+  async function listMics() {
+    try {
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+      const cur = el.micSel.value;
+      el.micSel.innerHTML = '<option value="">Mikrofon default</option>';
+      devs.forEach((d, i) => {
+        const o = document.createElement('option');
+        o.value = d.deviceId; o.textContent = d.label || 'Mikrofon ' + (i + 1);
+        el.micSel.appendChild(o);
+      });
+      el.micSel.value = cur;
+    } catch (e) { /* abaikan */ }
+  }
+
+  async function connectMic() {
+    ensureCtx();
+    stopStream(micStream); micNode?.disconnect(); micNode = null;
+    const id = el.micSel.value;
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+    micNode = ctx.createMediaStreamSource(micStream);
+    micNode.connect(micGain);
+    const label = micStream.getAudioTracks()[0]?.label || 'Mikrofon';
+    setStatus(el.micStatus, 'Terhubung: ' + label, 'live');
+    listMics();
+  }
+
+  async function connectSystem() {
+    ensureCtx();
+    if (!navigator.mediaDevices.getDisplayMedia) throw new Error('Browser ini tidak mendukung perekaman audio sistem. Gunakan Chrome atau Edge versi terbaru di komputer.');
+    const s = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      systemAudio: 'include', selfBrowserSurface: 'exclude'
+    });
+    const at = s.getAudioTracks();
+    s.getVideoTracks().forEach(t => t.stop()); // hanya perlu audionya
+    if (!at.length) {
+      setStatus(el.sysStatus, 'Tidak ada audio. Ulangi dan centang "Bagikan audio".', 'err');
+      throw new Error('Sumber yang dipilih tidak membagikan audio. Ulangi, lalu centang "Bagikan audio sistem" atau "Bagikan audio tab".');
+    }
+    stopStream(sysStream); sysNode?.disconnect();
+    sysStream = new MediaStream(at);
+    sysNode = ctx.createMediaStreamSource(sysStream);
+    sysNode.connect(sysGain);
+    at[0].addEventListener('ended', () => {
+      sysNode?.disconnect(); sysNode = null;
+      setStatus(el.sysStatus, 'Berbagi audio dihentikan', 'err');
+    });
+    setStatus(el.sysStatus, 'Terhubung: ' + (at[0].label || 'audio sistem'), 'live');
+    el.sysPick.textContent = 'Ganti sumber audio sistem…';
+  }
+
+  function stopStream(s) { s?.getTracks().forEach(t => t.stop()); }
+
+  /* ---------- perekaman ---------- */
+  function pickMime() {
+    const opts = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    return opts.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  async function start() {
+    showMsg('');
+    if (!el.micOn.checked && !el.sysOn.checked) return showMsg('Aktifkan minimal satu sumber audio.', true);
+    el.btnRec.disabled = true;
+    try {
+      if (el.micOn.checked && !micNode) {
+        try { await connectMic(); }
+        catch (e) { setStatus(el.micStatus, 'Izin mikrofon ditolak atau tidak ada perangkat', 'err'); throw new Error('Mikrofon tidak bisa diakses: ' + e.message); }
+      }
+      if (el.sysOn.checked && !sysNode) await connectSystem();
+    } catch (e) {
+      el.btnRec.disabled = false;
+      return showMsg(e.name === 'NotAllowedError' ? 'Akses dibatalkan. Coba lagi dan izinkan berbagi.' : e.message, true);
+    }
+    applyVolumes();
+    const mimeType = pickMime();
+    recorder = new MediaRecorder(dest.stream, mimeType ? { mimeType, audioBitsPerSecond: 128000 } : undefined);
+    chunks = []; marks = []; renderMarks();
+    recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+    recorder.onstop = save;
+    recorder.start(1000);
+    startedAt = Date.now(); pausedTotal = 0;
+    tick = setInterval(() => el.clock.textContent = fmt(elapsed()), 250);
+    setUI('on');
+    window.addEventListener('beforeunload', guard);
+  }
+
+  function togglePause() {
+    if (recorder.state === 'recording') { recorder.pause(); pausedAt = Date.now(); setUI('paused'); }
+    else if (recorder.state === 'paused') { pausedTotal += Date.now() - pausedAt; recorder.resume(); setUI('on'); }
+  }
+
+  function stop() {
+    if (recorder?.state === 'paused') pausedTotal += Date.now() - pausedAt;
+    const duration = elapsed();
+    recorder._duration = duration;
+    recorder.stop();
+    clearInterval(tick);
+    setUI('idle');
+    window.removeEventListener('beforeunload', guard);
+  }
+
+  function addMark() {
+    marks.push({ t: elapsed(), label: 'Tanda ' + (marks.length + 1) });
+    renderMarks();
+  }
+  function renderMarks() {
+    el.marks.innerHTML = '';
+    marks.forEach(m => {
+      const s = document.createElement('span'); s.className = 'mark';
+      const b = document.createElement('b'); b.textContent = fmt(m.t);
+      s.append(b, m.label); el.marks.appendChild(s);
+    });
+  }
+
+  function guard(e) { e.preventDefault(); e.returnValue = ''; }
+
+  function setUI(mode) {
+    const on = mode !== 'idle';
+    el.btnRec.disabled = on; el.btnPause.disabled = !on; el.btnMark.disabled = !on; el.btnStop.disabled = !on;
+    el.btnPause.textContent = mode === 'paused' ? 'Lanjutkan' : 'Jeda';
+    el.state.className = 'state' + (mode === 'on' ? ' on' : mode === 'paused' ? ' paused' : '');
+    el.stateTxt.textContent = mode === 'on' ? 'Merekam' : mode === 'paused' ? 'Dijeda' : 'Siap';
+    el.micSel.disabled = on;
+    if (!on) el.clock.textContent = '00:00:00';
+  }
+
+  async function save() {
+    const type = recorder.mimeType || chunks[0]?.type || 'audio/webm';
+    const blob = new Blob(chunks, { type });
+    const now = new Date();
+    const rec = {
+      id: now.getTime(),
+      name: el.title.value.trim() || 'Rapat ' + now.toLocaleDateString('id-ID'),
+      date: now.toISOString(),
+      duration: recorder._duration,
+      marks: marks.slice(),
+      sources: [el.micOn.checked && 'mikrofon', el.sysOn.checked && 'sistem'].filter(Boolean),
+      blob
+    };
+    try { await dbPut(rec); showMsg('Rekaman "' + rec.name + '" tersimpan di browser ini.'); }
+    catch (e) { showMsg('Gagal menyimpan ke browser; file langsung diunduh.', true); download(blob, rec.name, type); }
+    renderList();
+  }
+
+  /* ---------- penyimpanan (IndexedDB) ---------- */
+  let dbp;
+  function db() {
+    return dbp ||= new Promise((res, rej) => {
+      const r = indexedDB.open('perekam-rapat', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('recs', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  }
+  const tx = async (mode, fn) => {
+    const d = await db();
+    return new Promise((res, rej) => {
+      const t = d.transaction('recs', mode); const req = fn(t.objectStore('recs'));
+      t.oncomplete = () => res(req?.result); t.onerror = () => rej(t.error);
+    });
+  };
+  const dbPut = r => tx('readwrite', s => s.put(r));
+  const dbAll = () => tx('readonly', s => s.getAll());
+  const dbDel = id => tx('readwrite', s => s.delete(id));
+
+  function ext(type) { return type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : type.includes('wav') ? 'wav' : 'webm'; }
+  function download(blob, name, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = safeName(name) + '.' + ext(type || blob.type);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  async function toWav(blob) {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const ab = await ac.decodeAudioData(await blob.arrayBuffer());
+    ac.close();
+    const ch = Math.min(2, ab.numberOfChannels), sr = ab.sampleRate, len = ab.length;
+    const out = new DataView(new ArrayBuffer(44 + len * ch * 2));
+    const w = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); out.setUint32(4, 36 + len * ch * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+    out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, ch, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * ch * 2, true); out.setUint16(32, ch * 2, true);
+    out.setUint16(34, 16, true); w(36, 'data'); out.setUint32(40, len * ch * 2, true);
+    const data = [...Array(ch)].map((_, i) => ab.getChannelData(i));
+    let o = 44;
+    for (let i = 0; i < len; i++) for (let c = 0; c < ch; c++) {
+      const v = Math.max(-1, Math.min(1, data[c][i]));
+      out.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2;
+    }
+    return new Blob([out], { type: 'audio/wav' });
+  }
+
+  const urls = [];
+  async function renderList() {
+    let recs = [];
+    try { recs = await dbAll(); } catch (e) { el.storeInfo.textContent = 'Penyimpanan browser tidak tersedia'; return; }
+    urls.splice(0).forEach(u => URL.revokeObjectURL(u));
+    recs.sort((a, b) => b.id - a.id);
+    const total = recs.reduce((n, r) => n + r.blob.size, 0);
+    el.storeInfo.textContent = recs.length ? recs.length + ' rekaman · ' + fmtSize(total) : '';
+    el.list.innerHTML = '';
+    if (!recs.length) {
+      el.list.innerHTML = '<div class="empty">Belum ada rekaman. Tekan "Mulai rekam" untuk membuat yang pertama.</div>';
+      return;
+    }
+    for (const r of recs) {
+      const item = document.createElement('div'); item.className = 'item';
+      const head = document.createElement('div'); head.className = 'item-head';
+      const nm = document.createElement('div'); nm.className = 'item-name'; nm.textContent = r.name;
+      const meta = document.createElement('div'); meta.className = 'meta';
+      meta.textContent = new Date(r.date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) +
+        ' · ' + fmt(r.duration || 0) + ' · ' + fmtSize(r.blob.size) + ' · ' + (r.sources || []).join(' + ');
+      head.append(nm, meta);
+
+      const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'metadata';
+      const u = URL.createObjectURL(r.blob); urls.push(u); audio.src = u;
+
+      const mk = document.createElement('div'); mk.className = 'marks';
+      (r.marks || []).forEach(m => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'small';
+        b.textContent = fmt(m.t) + ' ' + m.label; b.title = 'Putar dari tanda ini';
+        b.onclick = () => { audio.currentTime = m.t / 1000; audio.play(); };
+        mk.appendChild(b);
+      });
+
+      const btns = document.createElement('div'); btns.className = 'btns';
+      const bDl = mkBtn('Unduh (' + ext(r.blob.type).toUpperCase() + ')', () => download(r.blob, r.name));
+      const bWav = mkBtn('Unduh WAV', async () => {
+        bWav.disabled = true; bWav.textContent = 'Mengonversi…';
+        try { download(await toWav(r.blob), r.name, 'audio/wav'); }
+        catch (e) { showMsg('Konversi WAV gagal: ' + e.message, true); }
+        bWav.disabled = false; bWav.textContent = 'Unduh WAV';
+      });
+      const bRen = mkBtn('Ganti nama', () => {
+        const inp = document.createElement('input'); inp.type = 'text'; inp.value = r.name; inp.id = 'rn' + r.id;
+        nm.replaceWith(inp); inp.focus(); inp.select();
+        const done = async () => { r.name = inp.value.trim() || r.name; await dbPut(r); renderList(); };
+        inp.onblur = done; inp.onkeydown = e => e.key === 'Enter' && inp.blur();
+      });
+      const bDel = mkBtn('Hapus', async () => {
+        if (bDel.dataset.confirm) { await dbDel(r.id); renderList(); }
+        else { bDel.dataset.confirm = 1; bDel.textContent = 'Yakin hapus?'; setTimeout(() => { delete bDel.dataset.confirm; bDel.textContent = 'Hapus'; }, 3000); }
+      });
+      bDel.classList.add('danger');
+      btns.append(bDl, bWav, bRen, bDel);
+      item.append(head, audio);
+      if (r.marks?.length) item.append(mk);
+      item.append(btns);
+      el.list.appendChild(item);
+    }
+  }
+  function mkBtn(text, fn) { const b = document.createElement('button'); b.type = 'button'; b.className = 'small'; b.textContent = text; b.onclick = fn; return b; }
+
+  /* ---------- event ---------- */
+  el.btnRec.onclick = start;
+  el.btnPause.onclick = togglePause;
+  el.btnStop.onclick = stop;
+  el.btnMark.onclick = addMark;
+  el.sysPick.onclick = async () => {
+    showMsg('');
+    try { await connectSystem(); el.sysOn.checked = true; applyVolumes(); }
+    catch (e) { showMsg(e.name === 'NotAllowedError' ? 'Berbagi layar dibatalkan.' : e.message, true); }
+  };
+  el.micSel.onchange = () => { if (micNode) connectMic().catch(e => showMsg(e.message, true)); };
+  el.micOn.onchange = el.sysOn.onchange = applyVolumes;
+  el.micVol.oninput = () => { el.micVolTxt.textContent = el.micVol.value + '%'; applyVolumes(); };
+  el.sysVol.oninput = () => { el.sysVolTxt.textContent = el.sysVol.value + '%'; applyVolumes(); };
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || !recorder || recorder.state === 'inactive') return;
+    if (e.key.toLowerCase() === 'm') addMark();
+  });
+  navigator.mediaDevices?.addEventListener?.('devicechange', listMics);
+
+  if (!window.MediaRecorder || !navigator.mediaDevices) {
+    showMsg('Browser ini tidak mendukung perekaman. Buka di Chrome, Edge, atau Firefox versi terbaru.', true);
+    el.btnRec.disabled = true;
+  } else if (!window.isSecureContext) {
+    showMsg('Buka halaman ini lewat http://localhost atau https agar mikrofon bisa diakses.', true);
+  }
+  listMics();
+  renderList();
+})();
+</script>
+</body>
+</html>
