@@ -1,0 +1,132 @@
+<Window x:Class="PerekamRapat.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Perekam Rapat" Width="780" Height="780" MinWidth="700" MinHeight="660"
+        WindowStartupLocation="CenterScreen" PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded" Closing="Window_Closing">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <TextBox x:Name="TitleBox" Grid.Row="0" FontSize="16" Padding="6" Margin="0,0,0,14"
+             ToolTip="Judul rapat, mis. Rapat Mingguan Tim Produk" />
+
+    <Grid Grid.Row="1" Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="12" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" BorderBrush="#33808080" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <StackPanel>
+          <Rectangle Height="3" Fill="Teal" />
+          <StackPanel Margin="14">
+            <DockPanel>
+              <CheckBox x:Name="MicEnabled" DockPanel.Dock="Right" IsChecked="True" Content="Aktif" VerticalAlignment="Center" />
+              <StackPanel>
+                <TextBlock Text="Audio eksternal" FontWeight="SemiBold" FontSize="15" />
+                <TextBlock Text="Mikrofon / suara di ruangan" Foreground="Gray" />
+              </StackPanel>
+            </DockPanel>
+            <DockPanel Margin="0,10,0,0">
+              <Button x:Name="RefreshMic" DockPanel.Dock="Right" Content="⟳" Width="28" Margin="6,0,0,0" Click="Refresh_Click"
+                      ToolTip="Muat ulang daftar perangkat" />
+              <ComboBox x:Name="MicCombo" />
+            </DockPanel>
+            <ProgressBar x:Name="MicMeter" Height="6" Minimum="0" Maximum="1" Foreground="Teal" Margin="0,10,0,0" />
+            <DockPanel Margin="0,8,0,0">
+              <TextBlock x:Name="MicVolText" DockPanel.Dock="Right" Text="100%" Width="42" TextAlignment="Right" />
+              <TextBlock Text="Volume" DockPanel.Dock="Left" Foreground="Gray" Margin="0,0,8,0" />
+              <Slider x:Name="MicVolume" Minimum="0" Maximum="1" Value="1" ValueChanged="Volume_Changed" />
+            </DockPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="2" BorderBrush="#33808080" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+        <StackPanel>
+          <Rectangle Height="3" Fill="DarkOrange" />
+          <StackPanel Margin="14">
+            <DockPanel>
+              <CheckBox x:Name="SystemEnabled" DockPanel.Dock="Right" IsChecked="True" Content="Aktif" VerticalAlignment="Center" />
+              <StackPanel>
+                <TextBlock Text="Audio internal" FontWeight="SemiBold" FontSize="15" />
+                <TextBlock Text="Suara Zoom, Teams, Meet, dll." Foreground="Gray" />
+              </StackPanel>
+            </DockPanel>
+            <DockPanel Margin="0,10,0,0">
+              <Button x:Name="RefreshSystem" DockPanel.Dock="Right" Content="⟳" Width="28" Margin="6,0,0,0" Click="Refresh_Click"
+                      ToolTip="Muat ulang daftar perangkat" />
+              <ComboBox x:Name="SystemCombo" />
+            </DockPanel>
+            <ProgressBar x:Name="SystemMeter" Height="6" Minimum="0" Maximum="1" Foreground="DarkOrange" Margin="0,10,0,0" />
+            <DockPanel Margin="0,8,0,0">
+              <TextBlock x:Name="SystemVolText" DockPanel.Dock="Right" Text="100%" Width="42" TextAlignment="Right" />
+              <TextBlock Text="Volume" DockPanel.Dock="Left" Foreground="Gray" Margin="0,0,8,0" />
+              <Slider x:Name="SystemVolume" Minimum="0" Maximum="1" Value="1" ValueChanged="Volume_Changed" />
+            </DockPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <CheckBox x:Name="KeepTracks" Grid.Row="2" Margin="0,0,0,10"
+              Content="Simpan juga track mikrofon dan audio sistem secara terpisah" />
+
+    <Border x:Name="NoticeBar" Grid.Row="3" Visibility="Collapsed" CornerRadius="6" Padding="10" Margin="0,0,0,10">
+      <DockPanel>
+        <Button x:Name="NoticeClose" DockPanel.Dock="Right" Content="✕" Width="26" Margin="8,0,0,0" Click="NoticeClose_Click" />
+        <Button x:Name="NoticeSettings" DockPanel.Dock="Right" Content="Buka Pengaturan" Visibility="Collapsed"
+                Padding="8,0" Click="NoticeSettings_Click" />
+        <TextBlock x:Name="NoticeText" TextWrapping="Wrap" VerticalAlignment="Center" />
+      </DockPanel>
+    </Border>
+
+    <DockPanel Grid.Row="4" Margin="0,0,0,8">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button x:Name="StartBtn" Content="● Mulai rekam (Ctrl+R)" Padding="14,8" Background="#D32F2F" Foreground="White"
+                BorderThickness="0" Click="Start_Click" />
+        <Button x:Name="PauseBtn" Content="Jeda (Ctrl+P)" Padding="14,8" Margin="0,0,8,0" Visibility="Collapsed" Click="Pause_Click" />
+        <Button x:Name="StopBtn" Content="■ Selesai (Ctrl+.)" Padding="14,8" Visibility="Collapsed" Click="Stop_Click" />
+      </StackPanel>
+      <StackPanel>
+        <TextBlock x:Name="StatusText" Text="SIAP" FontSize="12" FontWeight="SemiBold" Foreground="Gray" />
+        <TextBlock x:Name="TimerText" Text="00:00:00" FontFamily="Consolas" FontSize="40" FontWeight="SemiBold" />
+      </StackPanel>
+    </DockPanel>
+
+    <DockPanel x:Name="MarkRow" Grid.Row="5" Margin="0,0,0,8" Visibility="Collapsed">
+      <Button DockPanel.Dock="Right" Content="🔖 Tandai (Ctrl+B)" Padding="10,4" Margin="8,0,0,0" Click="Mark_Click" />
+      <TextBox x:Name="MarkNote" Padding="4" ToolTip="Catatan untuk tanda (opsional), mis. Keputusan anggaran"
+               KeyDown="MarkNote_KeyDown" />
+    </DockPanel>
+
+    <ScrollViewer Grid.Row="6" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+      <StackPanel x:Name="MarkChips" Orientation="Horizontal" />
+    </ScrollViewer>
+
+    <Grid Grid.Row="7">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <DockPanel Margin="0,6,0,6">
+        <Button DockPanel.Dock="Right" Content="Buka folder" Padding="10,2" Click="OpenFolder_Click" />
+        <TextBlock Text="Rekaman tersimpan" FontWeight="SemiBold" FontSize="15" />
+        <TextBlock x:Name="CountText" Text="0" Foreground="Gray" Margin="8,0,0,0" />
+      </DockPanel>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel x:Name="RecordingsPanel" />
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</Window>

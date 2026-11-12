@@ -1,0 +1,22 @@
+name: Build Windows app
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publish
+        run: >
+          dotnet publish windows/PerekamRapat.csproj -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PerekamRapat-Windows
+          path: out/PerekamRapat.exe
