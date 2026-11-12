@@ -2,7 +2,12 @@ name: Build Windows app
 
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -20,3 +25,12 @@ jobs:
         with:
           name: PerekamRapat-Windows
           path: out/PerekamRapat.exe
+      - name: Rilis publik
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ github.ref_name }}" out/PerekamRapat.exe
+          --repo "${{ github.repository }}"
+          --title "Perekam Rapat untuk Windows ${{ github.ref_name }}"
+          --notes "Unduh PerekamRapat.exe lalu klik dua kali. Tidak perlu instalasi. Jika SmartScreen memperingatkan: Info lebih lanjut, lalu Tetap jalankan (aplikasi belum ditandatangani)."
